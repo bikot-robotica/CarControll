@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Car Controller - Bikot</title>
+<!-- 
+  @copyright Bikot
+  @website bikotworl.com
+  Todos los derechos reservados.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+<style>
+:root{
+  --bg:#0e0f11; --panel:#16181c; --panel2:#1d2025; --line:#272b32;
+  --text:#e7e9ec; --muted:#8a909a; --accent:#EA7900; --accent-soft:rgba(234,121,0,.14);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:hidden;
+  font-family:"Inter","Segoe UI",Roboto,system-ui,-apple-system,sans-serif;touch-action:manipulation}
+button{font-family:inherit;color:inherit;cursor:pointer}
+
+.app{display:flex;flex-direction:column;height:100%;gap:10px;
+  padding:10px max(14px,env(safe-area-inset-right)) 12px max(14px,env(safe-area-inset-left))}
+
+.topbar{display:flex;align-items:center;gap:10px;height:54px;flex:none}
+.cmd{display:flex;align-items:center;gap:10px;height:100%;padding:0 16px 0 7px;
+  background:var(--panel);border:1px solid var(--line);border-radius:16px}
+.cmd .letter{width:40px;height:40px;border-radius:11px;background:var(--accent);color:#0e0f11;
+  font-weight:800;font-size:23px;display:grid;place-items:center}
+.cmd.idle .letter{background:var(--panel2);color:var(--muted)}
+.cmd .lbl{display:flex;flex-direction:column;line-height:1.25}
+.cmd .lbl b{font-size:13px;font-weight:600}
+.cmd .lbl span{font-size:11px;color:var(--muted)}
+.title{flex:1;display:flex;flex-direction:column;align-items:center;line-height:1.3}
+.title-row{display:flex;align-items:center;gap:8px}
+.title b{font-size:17px;font-weight:700;letter-spacing:.02em}
+.title-logo{height:40px;width:auto;display:inline-block;vertical-align:middle}
+.title span{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:#E53935}
+.dot.ok{background:#63BB4D}
+.iconbtn{width:48px;height:48px;border-radius:15px;background:var(--panel);border:1px solid var(--line);
+  font-size:18px;display:grid;place-items:center}
+.iconbtn:active,.iconbtn.on{border-color:var(--accent);color:var(--accent)}
+
+.main{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:12px}
+.zone{background:var(--panel);border:1px solid var(--line);border-radius:22px;
+  display:flex;align-items:center;justify-content:center;min-height:0}
+
+.pad{position:relative;background:var(--panel2);border:1px solid var(--line);border-radius:999px;touch-action:none}
+.pad.v{width:108px;height:min(64vh,270px)}
+.pad.h{height:108px;width:min(88%,300px)}
+.pad .knob{position:absolute;left:50%;top:50%;width:66px;height:66px;margin:-33px 0 0 -33px;
+  border-radius:50%;background:var(--accent);color:#0e0f11;display:grid;place-items:center;font-size:20px}
+.pad .arr{position:absolute;color:#5b616b;font-size:15px}
+.pad.v .a1{top:16px;left:50%;margin-left:-7px}
+.pad.v .a2{bottom:16px;left:50%;margin-left:-7px}
+.pad.h .a1{left:18px;top:50%;margin-top:-8px}
+.pad.h .a2{right:18px;top:50%;margin-top:-8px}
+.pad.locked{opacity:.4}
+
+.btn-mode-layout{display:flex;flex-direction:column;width:100%;height:100%;padding:12px;gap:8px;align-items:center;justify-content:center}
+.btn-mode-layout.locked{opacity:.4}
+.btn-mode-row{display:flex;gap:8px;width:100%;flex:1}
+.btn-mode-row .btn{flex:1;min-width:0}
+
+.center{flex-direction:column;gap:10px;padding:12px}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:18px;color:var(--muted);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+  font-size:13px;font-weight:600;touch-action:none}
+.btn i{font-size:26px;color:var(--text)}
+.btn.on,.btn:active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.btn.on i,.btn:active i{color:var(--accent)}
+
+.aux-row{display:flex;gap:10px;justify-content:center;align-items:center;width:100%;flex:none}
+.circle{flex:1 1 0;max-width:76px;aspect-ratio:1/1;border-radius:50%;gap:3px;font-size:10px;padding:0}
+.circle i{font-size:20px}
+.slot{flex:1 1 0;max-width:76px;aspect-ratio:1/1}
+
+.row{display:flex;gap:10px;width:100%;flex:1;min-height:0}
+.row .btn{flex:1}
+.hint{font-size:12px;color:var(--muted);flex:none;text-align:center}
+
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .2s;z-index:5}
+.scrim.show{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(370px,62vw);background:var(--panel);
+  border-left:1px solid var(--line);transform:translateX(100%);transition:transform .22s ease;
+  z-index:10;display:flex;flex-direction:column;padding-right:env(safe-area-inset-right)}
+.drawer.open{transform:none}
+.dhead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;
+  border-bottom:1px solid var(--line);font-weight:700;font-size:16px}
+.dhead button{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);font-size:16px}
+.dbody{flex:1;overflow-y:auto;padding:14px 16px 20px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.card h4{margin:0;font-size:13px;font-weight:600;color:var(--muted)}
+.primary{background:var(--accent);color:#0e0f11;border:0;border-radius:12px;padding:13px;font-weight:700;font-size:14px}
+.primary:disabled{opacity:.5}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:12px;padding:11px;font-size:13px;color:var(--text);text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.ghost:active{border-color:var(--accent);color:var(--accent)}
+.status{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600}
+.msg{font-size:12px;color:var(--muted);min-height:15px}
+.dev{display:flex;align-items:center;gap:10px;padding:11px;border-radius:12px;border:1px solid var(--line);
+  background:transparent;text-align:left;width:100%}
+.dev.target{border-color:var(--accent)}
+.dev .dn{flex:1;font-size:14px}
+.dev small{color:var(--muted);font-size:11px}
+.empty{font-size:13px;color:var(--muted)}
+.note{font-size:12px;color:var(--muted);line-height:1.5}
+.field{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px}
+.field b{color:var(--accent);font-weight:700}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent)}
+.seg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.seg button{flex:1;padding:10px;background:transparent;border:0;color:var(--muted);font-weight:600}
+.seg button.on{background:var(--accent);color:#0e0f11}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line)}
+.kv:last-child{border-bottom:0}
+.kv span:first-child{color:var(--muted)}
+.brand-header{display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 0;gap:4px}
+.brand-header i{font-size:36px;color:var(--accent);margin-bottom:6px}
+.brand-header h3{margin:0;font-size:18px;font-weight:800}
+.brand-header span{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="cmd idle" id="cmd">
+      <div class="letter" id="cmdLetter">S</div>
+      <div class="lbl"><b>Comando</b><span>Enviando</span></div>
+    </div>
+    <div class="title">
+      <div class="title-row">
+        <img src="gato.svg" alt="Logo Gato" class="title-logo">
+        <b>Bikot</b>
+      </div>
+      <span><i class="dot" id="dot"></i><span id="topStatus">Desconectado</span></span>
+    </div>
+    <button class="iconbtn" id="btnInfo" aria-label="Información"><i class="fa-solid fa-circle-info"></i></button>
+    <button class="iconbtn" id="btnSet" aria-label="Configuración"><i class="fa-solid fa-gear"></i></button>
+    <button class="iconbtn" id="btnBt" aria-label="Bluetooth"><i class="fa-brands fa-bluetooth-b"></i></button>
+  </header>
+
+  <main class="main">
+    <section class="zone" id="zoneV">
+      <div class="pad v" id="padV">
+        <i class="fa-solid fa-chevron-up arr a1"></i>
+        <i class="fa-solid fa-chevron-down arr a2"></i>
+        <div class="knob"><i class="fa-solid fa-arrows-up-down"></i></div>
+      </div>
+      <div class="btn-mode-layout" id="btnsV" style="display:none;">
+        <button class="btn" id="btnF" style="flex:1;width:100%;"><i class="fa-solid fa-chevron-up"></i><span>Adelante</span></button>
+        <button class="btn" id="btnB" style="flex:1;width:100%;"><i class="fa-solid fa-chevron-down"></i><span>Atrás</span></button>
+      </div>
+    </section>
+
+    <section class="zone center">
+      <div class="aux-row">
+        <button class="btn circle" id="btnSpecial" aria-label="Función especial"><i class="fa-solid fa-bolt"></i><span>Especial</span></button>
+        <button class="btn circle" id="btnLed" aria-label="LED" aria-pressed="false"><i class="fa-solid fa-lightbulb"></i><span>LED</span></button>
+        <div class="slot" aria-hidden="true"></div>
+      </div>
+      <div class="row">
+        <button class="btn" id="btnHorn"><i class="fa-solid fa-bullhorn"></i><span>Bocina</span></button>
+        <button class="btn" id="btnGyro"><i class="fa-solid fa-mobile-screen-button"></i><span>Giroscopio</span></button>
+      </div>
+      <div class="hint" id="hint">Control manual</div>
+    </section>
+
+    <section class="zone" id="zoneH">
+      <div class="pad h" id="padH">
+        <i class="fa-solid fa-chevron-left arr a1"></i>
+        <i class="fa-solid fa-chevron-right arr a2"></i>
+        <div class="knob"><i class="fa-solid fa-arrows-left-right"></i></div>
+      </div>
+      <div class="btn-mode-layout" id="btnsH" style="display:none;">
+        <div class="btn-mode-row">
+          <button class="btn" id="btnL"><i class="fa-solid fa-chevron-left"></i><span>Izquierda</span></button>
+          <button class="btn" id="btnR"><i class="fa-solid fa-chevron-right"></i><span>Derecha</span></button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="drawer" id="drawerBt">
+  <div class="dhead"><span>Conexión Bluetooth</span><button data-close aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="dbody">
+    <div class="card">
+      <div class="status"><i class="dot" id="dot2"></i><span id="btText">Desconectado</span></div>
+      <div class="msg" id="btMsg"></div>
+      <button class="primary" id="btConnect"><i class="fa-solid fa-plug"></i>&nbsp; Conectar a Bikot_Car</button>
+      <button class="ghost" id="btDisconnect"><i class="fa-solid fa-plug-circle-xmark"></i>&nbsp; Desconectar</button>
+    </div>
+    <div class="card">
+      <h4>Dispositivos emparejados</h4>
+      <div id="paired"></div>
+      <button class="ghost" id="btRefresh"><i class="fa-solid fa-rotate"></i>&nbsp; Actualizar lista</button>
+    </div>
+    <div class="card">
+      <h4>Primera vez</h4>
+      <div class="note">Empareje Bikot_Car desde los ajustes Bluetooth de Android (no tiene contraseña) y vuelva a esta pantalla.</div>
+      <button class="ghost" id="btSettings"><i class="fa-solid fa-gear"></i>&nbsp; Abrir ajustes Bluetooth</button>
+    </div>
+  </div>
+</aside>
+
+<aside class="drawer" id="drawerSet">
+  <div class="dhead"><span>Configuración</span><button data-close aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="dbody">
+    <div class="card">
+      <h4>Modo de control</h4>
+      <div class="seg" id="segControl">
+        <button data-v="sencillo" class="on">Sencillo</button>
+        <button data-v="avanzado">Avanzado</button>
+      </div>
+    </div>
+    <div class="card">
+      <h4>Sensibilidad del giroscopio</h4>
+      <div class="field"><input type="range" id="sens" min="1" max="10" step="1"><b id="sensVal">5</b></div>
+      <div class="note">Más alta significa que basta una inclinación menor para mover el carrito.</div>
+    </div>
+    <div class="card">
+      <h4>Ajustes del giroscopio</h4>
+      <label class="field"><span>Invertir adelante y atrás</span><input type="checkbox" id="invFwd"></label>
+      <label class="field"><span>Invertir izquierda y derecha</span><input type="checkbox" id="invSide"></label>
+      <button class="ghost" id="calib"><i class="fa-solid fa-crosshairs"></i>&nbsp; Calibrar posición actual</button>
+    </div>
+    <div class="card">
+      <h4>Estado</h4>
+      <div class="kv"><span>Bluetooth</span><span id="stBt">Desconectado</span></div>
+      <div class="kv"><span>Dispositivo</span><span id="stDev">-</span></div>
+      <div class="kv"><span>Giroscopio</span><span id="stGyro">Apagado</span></div>
+      <div class="kv"><span>Inclinación</span><span id="stTilt">-</span></div>
+      <div class="kv"><span>LED</span><span id="stLed">Apagado</span></div>
+      <div class="kv"><span>Último comando</span><span id="stLast">S</span></div>
+      <div class="kv"><span>Última respuesta</span><span id="stRx">-</span></div>
+    </div>
+  </div>
+</aside>
+
+<aside class="drawer" id="drawerInfo">
+  <div class="dhead"><span>Información</span><button data-close aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="dbody">
+    <div class="card">
+      <div class="brand-header">
+        <i class="fa-solid fa-car"></i>
+        <h3>Car Controller</h3>
+        <span>Aplicación de control remoto</span>
+      </div>
+    </div>
+    <div class="card">
+      <h4>Detalles del software</h4>
+      <div class="kv"><span>Aplicación</span><span>Application for Bikot</span></div>
+      <div class="kv"><span>Versión</span><span>0.5-beta</span></div>
+      <div class="kv"><span>Desarrollado por</span><span>Bikot</span></div>
+      <div class="kv"><span>Sitio web</span><span>bikotworl.com</span></div>
+    </div>
+    <div class="card">
+      <h4>Copyright</h4>
+      <div class="note">© 2026 Bikotworl.com. Todos los derechos reservados. Diseñado para el control dinámico y telemetría del vehículo mediante Bluetooth.</div>
+      <a href="https://bikotworl.com" id="siteLink" target="_blank" rel="noopener" class="ghost" style="margin-top:6px;"><i class="fa-solid fa-globe"></i>&nbsp; Visitar bikotworl.com</a>
+    </div>
+  </div>
+</aside>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var hasBridge = typeof window.Android !== 'undefined';
+  var CMD_SPECIAL = 'Z';
+  var KEY = 'bikot_cfg_v1';
+  var cfg = { sens: 5, invFwd: false, invSide: false, controlMode: 'sencillo' };
+  try { Object.assign(cfg, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
+  function saveCfg() { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {} }
+
+  var st = { vert: null, horiz: null, sent: '', gyro: false, connected: false };
+  var ledOn = false, hintT = null;
+
+  function send(c) {
+    var ok = false;
+    try { ok = hasBridge && !!window.Android.sendCommand(c); } catch (e) {}
+    $('#cmdLetter').textContent = c;
+    $('#cmd').classList.toggle('idle', !ok || c === 'S');
+    $('#stLast').textContent = c;
+    return ok;
+  }
+  function tx(c) {
+    if (c === st.sent) return;
+    if (send(c)) st.sent = c;
+  }
+
+  function getCalculatedCommand() {
+    var v = st.vert, h = st.horiz;
+    if (v === 'F' && h === 'L') return 'G';
+    if (v === 'F' && h === 'R') return 'H';
+    if (v === 'B' && h === 'L') return 'I';
+    if (v === 'B' && h === 'R') return 'J';
+    if (v) return v;
+    if (h) return h;
+    return 'S';
+  }
+  function sendCurrentCommand() { tx(getCalculatedCommand()); }
+
+  function resetHint() {
+    $('#hint').textContent = st.gyro ? 'Inclina el teléfono para conducir' : 'Control manual';
+  }
+  function showHint(t) {
+    $('#hint').textContent = t;
+    clearTimeout(hintT);
+    hintT = setTimeout(resetHint, 2000);
+  }
+
+  function makePad(el, axis, cb) {
+    var knob = el.querySelector('.knob'), pid = null;
+    function range() {
+      var size = axis === 'v' ? el.clientHeight : el.clientWidth;
+      return size / 2 - knob.offsetWidth / 2 - 4;
+    }
+    function setKnob(d) {
+      var px = d * range();
+      knob.style.transform = axis === 'v' ? 'translateY(' + px + 'px)' : 'translateX(' + px + 'px)';
+    }
+    function move(e) {
+      var b = el.getBoundingClientRect();
+      var c = axis === 'v' ? b.top + b.height / 2 : b.left + b.width / 2;
+      var p = axis === 'v' ? e.clientY : e.clientX;
+      var d = Math.max(-1, Math.min(1, (p - c) / range()));
+      setKnob(d); cb(d);
+    }
+    function end(e) {
+      if (e.pointerId !== pid) return;
+      pid = null; setKnob(0); cb(0);
+    }
+    el.addEventListener('pointerdown', function (e) {
+      if (st.gyro || pid !== null) return;
+      pid = e.pointerId; el.setPointerCapture(pid); move(e);
+    });
+    el.addEventListener('pointermove', function (e) { if (e.pointerId === pid) move(e); });
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    el.addEventListener('lostpointercapture', end);
+    return setKnob;
+  }
+  var knobV = makePad($('#padV'), 'v', function (d) {
+    if (!st.gyro && cfg.controlMode === 'avanzado') {
+      st.vert = d < -0.3 ? 'F' : d > 0.3 ? 'B' : null;
+      sendCurrentCommand();
+    }
+  });
+  var knobH = makePad($('#padH'), 'h', function (d) {
+    if (!st.gyro && cfg.controlMode === 'avanzado') {
+      st.horiz = d < -0.3 ? 'L' : d > 0.3 ? 'R' : null;
+      sendCurrentCommand();
+    }
+  });
+
+  var releasers = [];
+  function setupHoldButton(btnId, ch) {
+    var btn = $(btnId), pressed = false;
+    var isVert = (ch === 'F' || ch === 'B');
+    function start(e) {
+      e.preventDefault();
+      if (st.gyro || pressed) return;
+      pressed = true;
+      btn.setPointerCapture(e.pointerId);
+      btn.classList.add('on');
+      if (isVert) st.vert = ch; else st.horiz = ch;
+      sendCurrentCommand();
+    }
+    function stop(e) {
+      if (e) e.preventDefault();
+      if (!pressed) return;
+      pressed = false;
+      btn.classList.remove('on');
+      if (isVert) st.vert = null; else st.horiz = null;
+      sendCurrentCommand();
+    }
+    btn.addEventListener('pointerdown', start);
+    btn.addEventListener('pointerup', stop);
+    btn.addEventListener('pointercancel', stop);
+    btn.addEventListener('lostpointercapture', stop);
+    releasers.push(stop);
+  }
+  setupHoldButton('#btnF', 'F');
+  setupHoldButton('#btnB', 'B');
+  setupHoldButton('#btnL', 'L');
+  setupHoldButton('#btnR', 'R');
+
+  var hornActive = false;
+  function hornStart(e) {
+    e.preventDefault();
+    if (hornActive) return;
+    hornActive = true;
+    $('#btnHorn').setPointerCapture(e.pointerId);
+    $('#btnHorn').classList.add('on');
+    send('Y');
+  }
+  function hornStop(e) {
+    if (e) e.preventDefault();
+    if (!hornActive) return;
+    hornActive = false;
+    $('#btnHorn').classList.remove('on');
+  }
+  $('#btnHorn').addEventListener('pointerdown', hornStart);
+  $('#btnHorn').addEventListener('pointerup', hornStop);
+  $('#btnHorn').addEventListener('pointercancel', hornStop);
+  $('#btnHorn').addEventListener('lostpointercapture', hornStop);
+
+  var spBtn = $('#btnSpecial');
+  spBtn.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    spBtn.setPointerCapture(e.pointerId);
+    spBtn.classList.add('on');
+    send(CMD_SPECIAL);
+  });
+  ['pointerup', 'pointercancel'].forEach(function (ev) {
+    spBtn.addEventListener(ev, function (e) { e.preventDefault(); spBtn.classList.remove('on'); });
+  });
+
+  function setLedUi(on) {
+    ledOn = on;
+    $('#btnLed').classList.toggle('on', on);
+    $('#btnLed').setAttribute('aria-pressed', on ? 'true' : 'false');
+    $('#stLed').textContent = on ? 'Encendido' : 'Apagado';
+  }
+  $('#btnLed').addEventListener('click', function () {
+    var next = !ledOn;
+    if (send(next ? 'W' : 'w')) setLedUi(next);
+    else showHint('Conecta el carrito primero');
+  });
+
+  var cal = null, fs = 0, ss = 0, gyroTimer = null;
+  function wrap(a) { while (a > 180) a -= 360; while (a < -180) a += 360; return a; }
+  function screenAngle() {
+    var a = (screen.orientation && typeof screen.orientation.angle === 'number')
+      ? screen.orientation.angle : (window.orientation || 0);
+    return ((a % 360) + 360) % 360;
+  }
+  function clamp1(v) { return Math.max(-1, Math.min(1, v)); }
+
+  function onOrient(e) {
+    if (gyroTimer) { clearTimeout(gyroTimer); gyroTimer = null; $('#stGyro').textContent = 'Activo'; }
+    if (e.beta == null || e.gamma == null) return;
+    var a = screenAngle();
+    if (!cal || cal.a !== a) { cal = { b: e.beta, g: e.gamma, a: a }; fs = 0; ss = 0; }
+    var dB = wrap(e.beta - cal.b), dG = wrap(e.gamma - cal.g), f, s;
+    switch (a) {
+      case 90:  f = dG;  s = dB;  break;
+      case 180: f = dB;  s = -dG; break;
+      case 270: f = -dG; s = -dB; break;
+      default:  f = -dB; s = dG;
+    }
+    if (cfg.invFwd) f = -f;
+    if (cfg.invSide) s = -s;
+    fs = fs * 0.6 + f * 0.4;
+    ss = ss * 0.6 + s * 0.4;
+    var thr = 25 - cfg.sens * 2;
+    st.vert = fs > thr ? 'F' : fs < -thr ? 'B' : null;
+    st.horiz = ss > thr ? 'R' : ss < -thr ? 'L' : null;
+    knobV(-clamp1(fs / (thr * 3)));
+    knobH(clamp1(ss / (thr * 3)));
+    sendCurrentCommand();
+    $('#stTilt').textContent = Math.round(fs) + ' / ' + Math.round(ss) + ' grados';
+  }
+
+  function lockManual(on) {
+    ['#padV', '#padH', '#btnsV', '#btnsH'].forEach(function (id) { $(id).classList.toggle('locked', on); });
+  }
+  function gyroOff(text) {
+    window.removeEventListener('deviceorientation', onOrient, true);
+    if (gyroTimer) { clearTimeout(gyroTimer); gyroTimer = null; }
+    st.gyro = false; st.vert = null; st.horiz = null; cal = null;
+    knobV(0); knobH(0);
+    sendCurrentCommand();
+    $('#btnGyro').classList.remove('on');
+    lockManual(false);
+    resetHint();
+    $('#stGyro').textContent = text || 'Apagado';
+    $('#stTilt').textContent = '-';
+  }
+  function gyroOn() {
+    var ask = (typeof DeviceOrientationEvent !== 'undefined' &&
+               typeof DeviceOrientationEvent.requestPermission === 'function')
+      ? DeviceOrientationEvent.requestPermission() : Promise.resolve('granted');
+    ask.then(function (r) {
+      if (r !== 'granted') { gyroOff('Permiso denegado'); return; }
+      releasers.forEach(function (f) { f(); });
+      cal = null; st.gyro = true; st.vert = null; st.horiz = null;
+      window.addEventListener('deviceorientation', onOrient, true);
+      $('#btnGyro').classList.add('on');
+      lockManual(true);
+      resetHint();
+      $('#stGyro').textContent = 'Esperando sensor';
+      gyroTimer = setTimeout(function () { gyroOff('Sensor no disponible'); }, 2000);
+    }).catch(function () { gyroOff('Permiso denegado'); });
+  }
+  $('#btnGyro').addEventListener('click', function () { st.gyro ? gyroOff() : gyroOn(); });
+  $('#calib').addEventListener('click', function () { cal = null; });
+
+  function openDrawer(id) {
+    closeDrawers();
+    $(id).classList.add('open'); $('#scrim').classList.add('show');
+    $('#btnBt').classList.toggle('on', id === '#drawerBt' || st.connected);
+    $('#btnSet').classList.toggle('on', id === '#drawerSet');
+    $('#btnInfo').classList.toggle('on', id === '#drawerInfo');
+  }
+  function closeDrawers() {
+    document.querySelectorAll('.drawer').forEach(function (d) { d.classList.remove('open'); });
+    $('#scrim').classList.remove('show');
+    $('#btnSet').classList.remove('on');
+    $('#btnInfo').classList.remove('on');
+    $('#btnBt').classList.toggle('on', st.connected);
+  }
+  $('#btnBt').addEventListener('click', function () { openDrawer('#drawerBt'); renderPaired(); });
+  $('#btnSet').addEventListener('click', function () { openDrawer('#drawerSet'); });
+  $('#btnInfo').addEventListener('click', function () { openDrawer('#drawerInfo'); });
+  $('#scrim').addEventListener('click', closeDrawers);
+  document.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', closeDrawers); });
+  window.handleBack = function () {
+    if ($('#scrim').classList.contains('show')) { closeDrawers(); return true; }
+    return false;
+  };
+  $('#siteLink').addEventListener('click', function () { st.vert = null; st.horiz = null; tx('S'); });
+
+  function renderPaired() {
+    var list = [], box = $('#paired');
+    try { list = JSON.parse(hasBridge ? window.Android.getPairedDevices() : '[]'); } catch (e) {}
+    box.innerHTML = '';
+    if (!list.length) {
+      var em = document.createElement('div'); em.className = 'empty';
+      em.textContent = 'No hay dispositivos emparejados'; box.appendChild(em); return;
+    }
+    list.forEach(function (d) {
+      var row = document.createElement('button');
+      row.className = 'dev' + (d.name === 'Bikot_Car' ? ' target' : '');
+      var ic = document.createElement('i'); ic.className = 'fa-brands fa-bluetooth-b';
+      var nm = document.createElement('span'); nm.className = 'dn'; nm.textContent = d.name || 'Sin nombre';
+      var ad = document.createElement('small'); ad.textContent = d.address;
+      row.appendChild(ic); row.appendChild(nm); row.appendChild(ad);
+      row.addEventListener('click', function () { window.Android.connect(d.address); });
+      box.appendChild(row);
+    });
+  }
+  $('#btConnect').addEventListener('click', function () {
+    if (!hasBridge) { $('#btMsg').textContent = 'Puente Android no disponible'; return; }
+    window.Android.connectByName('Bikot_Car');
+  });
+  $('#btDisconnect').addEventListener('click', function () { if (hasBridge) window.Android.disconnect(); });
+  $('#btRefresh').addEventListener('click', renderPaired);
+  $('#btSettings').addEventListener('click', function () { if (hasBridge) window.Android.openBluetoothSettings(); });
+
+  window.onBtState = function (s, name, msg) {
+    var labels = { disconnected: 'Desconectado', connecting: 'Conectando', connected: 'Conectado', error: 'Sin conexión' };
+    var label = labels[s] || s;
+    st.connected = (s === 'connected');
+    st.sent = '';
+    setLedUi(false);
+    if (st.connected) {
+      send('w');
+    } else {
+      st.vert = null; st.horiz = null; sendCurrentCommand();
+    }
+    $('#btText').textContent = label + (name ? ' - ' + name : '');
+    $('#btMsg').textContent = msg || '';
+    $('#topStatus').textContent = label;
+    $('#dot').classList.toggle('ok', st.connected);
+    $('#dot2').classList.toggle('ok', st.connected);
+    $('#btnBt').classList.toggle('on', st.connected || $('#drawerBt').classList.contains('open'));
+    $('#stBt').textContent = label;
+    $('#stDev').textContent = name || '-';
+    $('#btConnect').disabled = (s === 'connecting' || st.connected);
+    $('#btDisconnect').disabled = !(st.connected || s === 'connecting');
+    if (!st.connected) { $('#cmd').classList.add('idle'); }
+    else { closeDrawers(); }
+  };
+  window.onBtData = function (t) { $('#stRx').textContent = String(t).trim().slice(-24) || '-'; };
+  window.onPairedChanged = renderPaired;
+
+  function updateControlModeUI() {
+    var isSimple = cfg.controlMode === 'sencillo';
+    $('#padV').style.display = isSimple ? 'none' : 'block';
+    $('#btnsV').style.display = isSimple ? 'flex' : 'none';
+    $('#padH').style.display = isSimple ? 'none' : 'block';
+    $('#btnsH').style.display = isSimple ? 'flex' : 'none';
+    document.querySelectorAll('#segControl button').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-v') === cfg.controlMode);
+    });
+  }
+  function syncCfgUi() {
+    $('#sens').value = cfg.sens; $('#sensVal').textContent = cfg.sens;
+    $('#invFwd').checked = cfg.invFwd; $('#invSide').checked = cfg.invSide;
+    updateControlModeUI();
+  }
+  $('#sens').addEventListener('input', function (e) {
+    cfg.sens = parseInt(e.target.value, 10); $('#sensVal').textContent = cfg.sens; saveCfg();
+  });
+  $('#invFwd').addEventListener('change', function (e) { cfg.invFwd = e.target.checked; saveCfg(); });
+  $('#invSide').addEventListener('change', function (e) { cfg.invSide = e.target.checked; saveCfg(); });
+  document.querySelectorAll('#segControl button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      cfg.controlMode = b.getAttribute('data-v');
+      saveCfg();
+      releasers.forEach(function (f) { f(); });
+      st.vert = null; st.horiz = null;
+      sendCurrentCommand();
+      syncCfgUi();
+    });
+  });
+  syncCfgUi();
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      if (st.gyro) gyroOff();
+      releasers.forEach(function (f) { f(); });
+      st.vert = null; st.horiz = null; sendCurrentCommand();
+      hornStop();
+    }
+  });
+  document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  if (hasBridge) {
+    try {
+      if (window.Android.isConnected()) window.onBtState('connected', window.Android.getConnectedName(), '');
+      else window.onBtState('disconnected', '', '');
+    } catch (e) {}
+  }
+})();
+</script>
+</body>
+</html>
